@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls /home/zhengshaolong/lebai_ws/src/control/scripts/*.py)",
+      "Bash(xargs -I{} basename {})"
+    ]
+  }
+}
