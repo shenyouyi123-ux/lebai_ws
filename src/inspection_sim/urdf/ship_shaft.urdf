@@ -1,5 +1,8 @@
 <robot
   name="ship_shaft">
+  <gazebo>
+    <static>true</static>
+  </gazebo>
   <link
     name="shaft_base">
     <inertial>
