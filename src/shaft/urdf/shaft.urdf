@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.6.0-1-g15f4949  Build Version: 1.6.7594.29634
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot
+  name="shaft">
+  <link
+    name="shaft_base_link">
+    <inertial>
+      <origin
+        xyz="-2.12E-08 0.048212 0.043784"
+        rpy="0 0 0" />
+      <mass
+        value="107.39" />
+      <inertia
+        ixx="6.9348"
+        ixy="-2.3541E-08"
+        ixz="9.1524E-08"
+        iyy="1.221"
+        iyz="0.21307"
+        izz="7.81" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://shaft/meshes/shaft_base_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.52941 0.54902 0.54902 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://shaft/meshes/shaft_base_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="shaft_Link1">
+    <inertial>
+      <origin
+        xyz="-8.0694E-06 0.3085 0.17498"
+        rpy="0 0 0" />
+      <mass
+        value="1.4808" />
+      <inertia
+        ixx="0.04816"
+        ixy="6.813E-08"
+        ixz="-1.044E-07"
+        iyy="0.00026623"
+        iyz="-2.7226E-08"
+        izz="0.048159" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://shaft/meshes/shaft_Link1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.89804 0.91765 0.92941 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://shaft/meshes/shaft_Link1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="shaft_Joint1"
+    type="revolute">
+    <origin
+      xyz="0 0 0"
+      rpy="0 0 0" />
+    <parent
+      link="shaft_base_link" />
+    <child
+      link="shaft_Link1" />
+    <axis
+      xyz="0 1 0" />
+    <limit
+      lower="0"
+      upper="0"
+      effort="0"
+      velocity="0" />
+  </joint>
+</robot>
