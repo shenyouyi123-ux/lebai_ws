@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(ls /home/zhengshaolong/lebai_ws/src/control/scripts/*.py)",
-      "Bash(xargs -I{} basename {})"
+      "Bash(xargs -I{} basename {})",
+      "Bash(ros2 --version)",
+      "Bash(colcon version-check:*)"
     ]
   }
 }
