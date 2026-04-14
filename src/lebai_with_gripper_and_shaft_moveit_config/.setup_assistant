@@ -1,0 +1,10 @@
+moveit_setup_assistant_config:
+  urdf:
+    package: lebai_lm3_support
+    relative_path: urdf/lm3_with_gripper_and_shaft.urdf
+  srdf:
+    relative_path: config/lm3_with_shaft.srdf
+  package_settings:
+    author_name: shenyouyi
+    author_email: shenyouyi123@gmail.com
+    generated_timestamp: 1776167275

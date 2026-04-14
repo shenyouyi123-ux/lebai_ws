@@ -4,7 +4,10 @@
       "Bash(ls /home/zhengshaolong/lebai_ws/src/control/scripts/*.py)",
       "Bash(xargs -I{} basename {})",
       "Bash(ros2 --version)",
-      "Bash(colcon version-check:*)"
+      "Bash(colcon version-check:*)",
+      "Bash(python3 -c ':*)",
+      "Bash(grep -n \"moveit_controllers\\\\|MoveItSimpleControllerManager\\\\|moveit_simple_controller\" /home/zhengshaolong/lebai_ws/install/lebai_with_gripper_and_shaft_moveit_config/share/lebai_with_gripper_and_shaft_moveit_config/config/*.yaml)",
+      "Bash(ls /home/zhengshaolong/lebai_ws/install/lebai_with_gripper_and_shaft_moveit_config/share/lebai_with_gripper_and_shaft_moveit_config/config/*controllers*)"
     ]
   }
 }

@@ -1,0 +1,27 @@
+# MoveIt 控制器管理器配置
+# moveit_controller_manager 告诉 MoveIt 用哪个插件桥接 ros2_control
+moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager
+
+moveit_simple_controller_manager:
+  controller_names:
+    - manipulator_controller
+    - gripper_controller
+
+manipulator_controller:
+  action_ns: follow_joint_trajectory
+  type: FollowJointTrajectory
+  default: true
+  joints:
+    - joint_1
+    - joint_2
+    - joint_3
+    - joint_4
+    - joint_5
+    - joint_6
+
+gripper_controller:
+  action_ns: follow_joint_trajectory
+  type: FollowJointTrajectory
+  default: true
+  joints:
+    - gripper_r_joint1
