@@ -1,12 +1,13 @@
-# 仿真模式 MoveIt 控制器配置（对接 ros2_control fake system）
+# 真实硬件模式 MoveIt 控制器配置
+# 格式参考乐白官方 lm3_controllers.yaml，controller_names 在顶层
 moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager
 
 controller_names:
-  - manipulator_controller
-  - gripper_controller
+  - lebai_trajectory_controller
+  - gripper_bridge_controller
 
-manipulator_controller:
-  action_ns: follow_joint_trajectory
+lebai_trajectory_controller:
+  action_ns: ""
   type: FollowJointTrajectory
   default: true
   joints:
@@ -17,7 +18,7 @@ manipulator_controller:
     - joint_5
     - joint_6
 
-gripper_controller:
+gripper_bridge_controller:
   action_ns: follow_joint_trajectory
   type: FollowJointTrajectory
   default: true

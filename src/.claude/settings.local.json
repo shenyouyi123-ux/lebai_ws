@@ -7,7 +7,12 @@
       "Bash(colcon version-check:*)",
       "Bash(python3 -c ':*)",
       "Bash(grep -n \"moveit_controllers\\\\|MoveItSimpleControllerManager\\\\|moveit_simple_controller\" /home/zhengshaolong/lebai_ws/install/lebai_with_gripper_and_shaft_moveit_config/share/lebai_with_gripper_and_shaft_moveit_config/config/*.yaml)",
-      "Bash(ls /home/zhengshaolong/lebai_ws/install/lebai_with_gripper_and_shaft_moveit_config/share/lebai_with_gripper_and_shaft_moveit_config/config/*controllers*)"
+      "Bash(ls /home/zhengshaolong/lebai_ws/install/lebai_with_gripper_and_shaft_moveit_config/share/lebai_with_gripper_and_shaft_moveit_config/config/*controllers*)",
+      "Bash(xargs ls *)",
+      "Bash(xargs cat *)",
+      "Bash(python3 -c ' *)",
+      "Read(//home/zhengshaolong/lebai_ws/**)",
+      "Bash(colcon build *)"
     ]
   }
 }
