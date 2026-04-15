@@ -24,7 +24,7 @@
         <joint name="joint_5" value="0"/>
         <joint name="joint_6" value="0"/>
     </group_state>
-    <group_state name="home_gripper" group="gripper">
+    <group_state name="close_gripper" group="gripper">
         <joint name="gripper_r_joint1" value="0"/>
     </group_state>
     <group_state name="up" group="manipulator">
@@ -34,6 +34,9 @@
         <joint name="joint_4" value="0"/>
         <joint name="joint_5" value="0"/>
         <joint name="joint_6" value="0"/>
+    </group_state>
+    <group_state name="open_gripper" group="gripper">
+        <joint name="gripper_r_joint1" value="0.85"/>
     </group_state>
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
     <end_effector name="hand" parent_link="tool0" group="gripper" parent_group="manipulator"/>

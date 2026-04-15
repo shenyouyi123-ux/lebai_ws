@@ -1,0 +1,10 @@
+# Default initial positions for lm3_with_shaft's ros2_control fake system
+
+initial_positions:
+  gripper_r_joint1: 0
+  joint_1: 0
+  joint_2: 0
+  joint_3: 0
+  joint_4: 0
+  joint_5: 0
+  joint_6: 0
