@@ -1,14 +1,6 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="lm3_with_shaft">
-    <xacro:arg name="initial_positions_file" default="initial_positions.yaml" />
-
     <!-- Import lm3_with_shaft urdf file -->
     <xacro:include filename="$(find lebai_lm3_support)/urdf/lm3_with_gripper_and_shaft.urdf" />
-
-    <!-- Import control_xacro -->
-    <xacro:include filename="lm3_with_shaft.ros2_control.xacro" />
-
-
-    <xacro:lm3_with_shaft_ros2_control name="FakeSystem" initial_positions_file="$(arg initial_positions_file)"/>
 
 </robot>

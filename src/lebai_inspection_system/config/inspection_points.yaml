@@ -1,0 +1,16 @@
+inspection_points:
+  - name: p01_safe_home
+    joints: [-1.5359, -2.0595, 1.6057, -1.5882, -1.4835, 3.2114]
+    gripper_rad: 0.0
+
+  - name: p02_approach_shaft_left
+    joints: [-2.0769, -2.0071, 2.0246, -1.9548, -1.3265, 2.7053]
+    gripper_rad: 0.0
+
+  - name: p03_inspect_shaft_left
+    joints: [-2.8623, -1.3963, 1.4137, -1.6930, -1.1345, 1.8850]
+    gripper_rad: 0.0
+
+  - name: p04_inspect_shaft_mid
+    joints: [-2.8798, -0.8552, 0.7679, -1.6232, -1.1519, 1.9024]
+    gripper_rad: 0.0

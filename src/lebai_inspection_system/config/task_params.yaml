@@ -1,0 +1,18 @@
+task_orchestrator:
+  ros__parameters:
+    arm_controller_name: manipulator_controller
+    gripper_controller_name: gripper_bridge_controller
+    arm_joint_names: [joint_1, joint_2, joint_3, joint_4, joint_5, joint_6]
+    points_file: ""
+    point_duration_sec: 3.0
+    pause_after_point_sec: 1.0
+    auto_start: true
+
+inspection_logger:
+  ros__parameters:
+    output_file: "/tmp/lebai_inspection_result.jsonl"
+
+fake_perception:
+  ros__parameters:
+    frame_id: base_link
+    period_sec: 1.0
