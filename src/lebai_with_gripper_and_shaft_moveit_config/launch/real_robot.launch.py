@@ -47,6 +47,7 @@ def generate_launch_description():
             "lm3_with_shaft",
             package_name="lebai_with_gripper_and_shaft_moveit_config",
         )
+        .planning_pipelines(pipelines=["ompl"])
         .to_moveit_configs()
     )
 

@@ -12,7 +12,10 @@
       "Bash(xargs cat *)",
       "Bash(python3 -c ' *)",
       "Read(//home/zhengshaolong/lebai_ws/**)",
-      "Bash(colcon build *)"
+      "Bash(colcon build *)",
+      "Bash(dpkg -l)",
+      "Read(//opt/ros/humble/**)",
+      "Bash(apt-cache search *)"
     ]
   }
 }
