@@ -54,6 +54,8 @@ def generate_launch_description():
             {
                 'arm_controller_name': 'lebai_trajectory_controller',
                 'gripper_controller_name': 'gripper_bridge_controller',
+                'arm_action_name': '/lebai_trajectory_controller',
+                'gripper_action_name': '/gripper_bridge_controller/follow_joint_trajectory',
                 'points_file': LaunchConfiguration('points_file'),
                 'auto_start': LaunchConfiguration('auto_start'),
             },

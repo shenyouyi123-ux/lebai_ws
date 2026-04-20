@@ -1,6 +1,7 @@
 import json
+import math
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import rclpy
 import yaml
@@ -10,6 +11,7 @@ from control_msgs.action import FollowJointTrajectory
 from rclpy.action import ActionClient
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
+from sensor_msgs.msg import JointState
 from std_msgs.msg import String
 from trajectory_msgs.msg import JointTrajectoryPoint
 
@@ -20,18 +22,28 @@ class TaskOrchestrator(Node):
 
         self.declare_parameter('arm_controller_name', 'manipulator_controller')
         self.declare_parameter('gripper_controller_name', 'gripper_bridge_controller')
+        self.declare_parameter('arm_action_name', '')
+        self.declare_parameter('gripper_action_name', '')
         self.declare_parameter('arm_joint_names', ['joint_1', 'joint_2', 'joint_3', 'joint_4', 'joint_5', 'joint_6'])
         self.declare_parameter('points_file', '')
         self.declare_parameter('point_duration_sec', 3.0)
         self.declare_parameter('pause_after_point_sec', 1.0)
         self.declare_parameter('auto_start', True)
+        # rad/s — used to compute safe duration from current position to first point
+        self.declare_parameter('max_joint_speed', 0.5)
 
         self.arm_controller_name = self.get_parameter('arm_controller_name').value
         self.gripper_controller_name = self.get_parameter('gripper_controller_name').value
+        _arm_action_name = self.get_parameter('arm_action_name').value
+        _gripper_action_name = self.get_parameter('gripper_action_name').value
         self.arm_joint_names = list(self.get_parameter('arm_joint_names').value)
         self.point_duration_sec = float(self.get_parameter('point_duration_sec').value)
         self.pause_after_point_sec = float(self.get_parameter('pause_after_point_sec').value)
         self.auto_start = bool(self.get_parameter('auto_start').value)
+        self.max_joint_speed = float(self.get_parameter('max_joint_speed').value)
+
+        self._current_joints: Optional[List[float]] = None
+        self._joint_state_order: List[str] = []
 
         points_file = self.get_parameter('points_file').value
         if not points_file:
@@ -45,17 +57,13 @@ class TaskOrchestrator(Node):
         self.current_index = 0
 
         self.event_pub = self.create_publisher(String, '/inspection/events', 10)
+        self.create_subscription(JointState, '/joint_states', self._on_joint_state, 10)
 
-        self.arm_action = ActionClient(
-            self,
-            FollowJointTrajectory,
-            f'/{self.arm_controller_name}/follow_joint_trajectory',
-        )
-        self.gripper_action = ActionClient(
-            self,
-            FollowJointTrajectory,
-            f'/{self.gripper_controller_name}/follow_joint_trajectory',
-        )
+        arm_action = _arm_action_name or f'/{self.arm_controller_name}/follow_joint_trajectory'
+        gripper_action = _gripper_action_name or f'/{self.gripper_controller_name}/follow_joint_trajectory'
+
+        self.arm_action = ActionClient(self, FollowJointTrajectory, arm_action)
+        self.gripper_action = ActionClient(self, FollowJointTrajectory, gripper_action)
 
         self._startup_timer = self.create_timer(0.5, self._try_start)
         self._started = False
@@ -85,6 +93,13 @@ class TaskOrchestrator(Node):
                 )
         return points
 
+    def _on_joint_state(self, msg: JointState) -> None:
+        name_to_pos = dict(zip(msg.name, msg.position))
+        positions = [name_to_pos.get(n) for n in self.arm_joint_names]
+        if any(p is None for p in positions):
+            return
+        self._current_joints = [float(p) for p in positions]
+
     def _publish_event(self, event: str, payload: Dict[str, Any]) -> None:
         msg = String()
         msg.data = json.dumps({'event': event, **payload}, ensure_ascii=False)
@@ -100,6 +115,11 @@ class TaskOrchestrator(Node):
             self.get_logger().info('Waiting action servers for arm/gripper...')
             return
 
+        if self._current_joints is None:
+            self.get_logger().info('Waiting for /joint_states...')
+            return
+
+        self.get_logger().info(f'Current joints: {[f"{v:.3f}" for v in self._current_joints]}')
         self._started = True
         self._startup_timer.cancel()
         self._publish_event('task_started', {'total_points': len(self.points)})
@@ -121,9 +141,17 @@ class TaskOrchestrator(Node):
 
         arm_goal = FollowJointTrajectory.Goal()
         arm_goal.trajectory.joint_names = self.arm_joint_names
+
+        # Use current joint positions as start so duration is computed from actual distance.
+        start = self._current_joints if self._current_joints is not None else joints
+        max_disp = max(abs(a - b) for a, b in zip(start, joints))
+        duration = max(self.point_duration_sec, max_disp / self.max_joint_speed)
+
         arm_goal.trajectory.points = [
-            self._make_point(joints, self.point_duration_sec)
+            self._make_point(start, 0.0),
+            self._make_point(joints, duration),
         ]
+        self.get_logger().info(f'Trajectory duration: {duration:.1f}s (max_disp={max_disp:.3f} rad)')
 
         send_future = self.arm_action.send_goal_async(arm_goal)
         send_future.add_done_callback(
@@ -188,6 +216,10 @@ class TaskOrchestrator(Node):
 
         self._publish_event('point_done', {'point': point_name, 'index': self.current_index})
         self.get_logger().info(f'Point {point_name} done.')
+
+        # Update current joints to the target we just reached.
+        point = self.points[self.current_index]
+        self._current_joints = [float(v) for v in point.get('joints', [])]
 
         self.current_index += 1
         self._resume_timer = self.create_timer(self.pause_after_point_sec, self._resume_once)

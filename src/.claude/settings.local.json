@@ -15,7 +15,16 @@
       "Bash(colcon build *)",
       "Bash(dpkg -l)",
       "Read(//opt/ros/humble/**)",
-      "Bash(apt-cache search *)"
+      "Bash(apt-cache search *)",
+      "Bash(ros2 action *)",
+      "Bash(ping -c 2 10.20.17.1)",
+      "Bash(nc -zv 10.20.17.1 5181)",
+      "Bash(nc -zv 10.20.17.1 5180)",
+      "Bash(nc -zv 10.20.17.1 443)",
+      "Bash(python3 -c \"from lebai.robot import LebaiRobot; help\\(LebaiRobot.move_joint\\)\")",
+      "Bash(python3 -c \"from lebai.robot import LebaiRobot; print\\([m for m in dir\\(LebaiRobot\\) if 'move' in m.lower\\(\\) or 'joint' in m.lower\\(\\)]\\)\")",
+      "Bash(python3 -c \"from lebai.robot import LebaiRobot; help\\(LebaiRobot.movej\\)\")",
+      "Bash(python3 -c \"from lebai.type import JointPose; help\\(JointPose\\)\")"
     ]
   }
 }
