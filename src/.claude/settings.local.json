@@ -24,7 +24,18 @@
       "Bash(python3 -c \"from lebai.robot import LebaiRobot; help\\(LebaiRobot.move_joint\\)\")",
       "Bash(python3 -c \"from lebai.robot import LebaiRobot; print\\([m for m in dir\\(LebaiRobot\\) if 'move' in m.lower\\(\\) or 'joint' in m.lower\\(\\)]\\)\")",
       "Bash(python3 -c \"from lebai.robot import LebaiRobot; help\\(LebaiRobot.movej\\)\")",
-      "Bash(python3 -c \"from lebai.type import JointPose; help\\(JointPose\\)\")"
+      "Bash(python3 -c \"from lebai.type import JointPose; help\\(JointPose\\)\")",
+      "Bash(pkill -f \"astra_camera\")",
+      "Bash(awk '{print $2}')",
+      "Bash(kill -9 21964)",
+      "Bash(lsusb)",
+      "Read(//home/zhengshaolong/gemini_depth_ws/**)",
+      "Read(//home/zhengshaolong/桌面/**)",
+      "Bash(python3 -c \"import moveit; print\\(moveit.__file__\\)\")",
+      "Bash(pip3 show *)",
+      "Bash(find /opt/ros/humble/lib/python3* -name \"moveit*\" -type d)",
+      "Bash(pip3 list *)",
+      "Bash(apt list *)"
     ]
   }
 }
