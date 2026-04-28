@@ -1,0 +1,117 @@
+vision_grasp_orchestrator:
+  ros__parameters:
+    simulation_mode: true           # true=仿真模式，false=真机模式
+
+    # ── 话题 / 坐标系 ──────────────────────────────────────────────────────────
+    target_topic: /target_position  # 视觉节点发布目标坐标的话题名，与视觉节点保持一致
+    joint_states_topic: /joint_states
+    base_frame: base_link           # 机械臂基座坐标系，所有坐标均以此为参考
+    tool_link: tool0                # 末端执行器 TF 名称，用于 TF 查询和 IK
+    group_name: manipulator         # MoveIt planning group 名称，与 SRDF 一致
+    arm_joint_names: [joint_1, joint_2, joint_3, joint_4, joint_5, joint_6]
+
+    # ── MoveIt / 夹爪接口名 ────────────────────────────────────────────────────
+    move_group_action_name: /move_action
+    execute_trajectory_action_name: /execute_trajectory
+    compute_ik_service_name: /compute_ik
+    compute_cartesian_path_service_name: /compute_cartesian_path
+    apply_planning_scene_service_name: /apply_planning_scene
+    # 仿真夹爪由 gripper_sim_node 提供；切真机时改为 /gripper_bridge_controller/follow_joint_trajectory
+    gripper_action_name: /gripper_controller/follow_joint_trajectory
+    gripper_joint_name: gripper_r_joint1  # 夹爪关节名，与 URDF 一致
+
+    # ── 目标坐标单位与稳定性 ───────────────────────────────────────────────────
+    target_unit_scale: 1.0          # 1.0=目标话题单位为 m；若视觉节点发 mm 则改为 0.001
+    target_timeout_sec: 2.0         # 超过此时间未收到新目标则认为目标丢失（秒）
+    stable_window_size: 3           # 稳定性判断窗口：取最近 N 帧做一致性检验
+    stable_position_tolerance_m: 0.005  # 窗口内最大允许偏差（米），越小要求越稳定
+
+    # ── 抓取偏置与高度 ─────────────────────────────────────────────────────────
+    grasp_offset_x_m: 0.0           # 抓取点相对目标坐标的 X 偏置（米），用于补偿夹爪中心偏移
+    grasp_offset_y_m: 0.0           # 抓取点 Y 偏置
+    grasp_offset_z_m: 0.172           # 沿 tool0 Z 轴方向的偏置（米），正值=tool0 远离目标
+    approach_height_m: 0.12         # 接近点在抓取点正上方的高度（米），越大越安全但路径更长
+    lift_height_m: 0.14             # 抓取后提升高度（米），需大于 approach_height_m 才能安全离开
+    min_grasp_z_m: 0.05             # 抓取点 Z 下限（米），防止末端撞桌面
+    min_approach_z_m: 0.12          # 接近点 Z 下限（米）
+    min_lift_z_m: 0.14              # 提升点 Z 下限（米）
+
+    # ── MoveIt 规划参数 ────────────────────────────────────────────────────────
+    allowed_planning_time: 15.0    # 单次规划最大时间（秒），越大成功率越高但等待越久
+    num_planning_attempts: 30     # 规划重试次数，失败时自动重试
+    max_velocity_scaling: 0.20      # 最大速度缩放比例（0~1），仿真可适当调大
+    max_acceleration_scaling: 0.20  # 最大加速度缩放比例（0~1）
+    ik_timeout_sec: 0.50            # IK 求解超时（秒），复杂姿态可适当调大
+    goal_joint_tolerance: 0.01      # 关节目标容差（弧度）
+    # MoveIt 规划求解器 ID，留空则使用 ompl_planning.yaml 的默认求解器
+    # 推荐：RRTConnectkConfigDefault（双向快速）、RRTstarkConfigDefault（渐近最优）
+    #       LBKPIECEkConfigDefault（窄通道强）、ESTkConfigDefault（低维空间快）
+    planner_id: RRTConnectkConfigDefault
+
+    # ── 姿态约束（保持末端朝向，防止翻转） ────────────────────────────────────
+    orientation_constraint_enabled: false  # false=关闭姿态约束，规划更自由但可能翻转
+    orientation_tol_x_rad: 0.25     # X 轴姿态容差（弧度），越大约束越松
+    orientation_tol_y_rad: 0.25     # Y 轴姿态容差
+    orientation_tol_z_rad: 0.40     # Z 轴姿态容差（绕竖轴旋转，通常可以更松）
+
+    # ── 笛卡尔路径（下压/提升阶段） ───────────────────────────────────────────
+    cartesian_max_step_m: 0.005     # 笛卡尔插值步长（米），越小路径越平滑但计算越慢
+    cartesian_jump_threshold: 0.0   # 关节跳变阈值，0.0=禁用检测（仿真推荐）
+    cartesian_fraction_threshold: 0.90  # 笛卡尔路径完成度下限（0~1），低于此值报错
+
+    # ── 夹爪参数 ───────────────────────────────────────────────────────────────
+    gripper_open_rad: 1.0           # 夹爪张开角度（弧度），对应 URDF 关节上限
+    gripper_closed_rad: 0.5         # 夹爪抓取角度：0.0=完全闭合(指尖间距~2.3cm)，1.0=完全张开；4cm方块用0.5留出足够间隙
+    gripper_motion_sec: 1.0         # 夹爪运动时间（秒）
+    wait_after_gripper_sec: 0.3     # 夹爪动作完成后额外等待时间（秒），确保稳定
+
+    # ── 超时设置 ───────────────────────────────────────────────────────────────
+    action_timeout_sec: 30.0        # action 调用总超时（秒），仿真启动慢需要较大值
+    service_timeout_sec: 10.0       # service 等待超时（秒），等待 MoveIt 服务上线
+    tf_timeout_sec: 2.0             # TF 查询超时（秒）
+
+    # ── 场景碰撞体：桌面 ───────────────────────────────────────────────────────
+    scene_apply_on_startup: true    # 启动时自动向 MoveIt PlanningScene 添加碰撞体
+    table_enabled: true            # false=不添加桌面碰撞体
+    table_id: sim_table             # 碰撞体 ID，在 RViz Scene Objects 面板可见
+    table_size_x_m: 0.50            # 桌面 X 方向长度（米，朝机械臂前方）
+    table_size_y_m: 0.40            # 桌面 Y 方向宽度（米，左右方向）
+    table_size_z_m: 0.10            # 桌面厚度（米）
+    table_pose_x_m: 0.35           # 桌面中心 X 坐标（米，相对 base_link）
+    table_pose_y_m: 0.00          # 桌面中心 Y 坐标（米，负值=偏左）
+    # 桌面顶面 Z = table_pose_z_m + table_size_z_m/2
+    # 例：pose_z=0.04, size_z=0.10 → 顶面在 Z=0.09m
+    table_pose_z_m: 0.04            # 桌面中心 Z 坐标（米，调整此值让桌面顶面与实际桌面对齐）
+
+    # ── 场景碰撞体：目标方块 ───────────────────────────────────────────────────
+    target_object_enabled: true     # false=不在 RViz 中显示方块 marker
+    target_object_collision_enabled: false  # true=方块加入碰撞检测（规划时绕开），false=仅可视化
+    target_object_id: sim_cube      # 碰撞体 ID
+    target_object_size_x_m: 0.04   # 方块 X 边长（米）
+    target_object_size_y_m: 0.04   # 方块 Y 边长（米）
+    target_object_size_z_m: 0.04   # 方块 Z 边长（米，高度）
+    target_object_pose_offset_x_m: 0.0   # 方块中心相对目标坐标的 X 偏置
+    target_object_pose_offset_y_m: 0.0   # 方块中心相对目标坐标的 Y 偏置
+    # offset_z = size_z / 2，使方块底面贴合目标坐标所在平面（桌面）
+    target_object_pose_offset_z_m: 0.0  # 方块中心 Z 偏置（= 边长/2，底面贴桌面）
+
+fake_target_position:
+  ros__parameters:
+    target_topic: /target_position  # 发布到哪个话题，需与 orchestrator 一致
+    frame_id: base_link             # 坐标系，必须与 orchestrator base_frame 一致
+    publish_period_sec: 0.2         # 发布频率（秒/帧），0.2=5Hz
+    # fixed=固定坐标，sweep=椭圆扫描运动
+    motion_mode: fixed
+
+    # ── fixed 模式：方块固定在此坐标 ──────────────────────────────────────────
+    fixed_x_m: 0.35                # 方块 X 坐标（米），需在机械臂可达范围内（LM3 约 0.2~0.5m）
+    fixed_y_m: 0.00               # 方块 Y 坐标（米），0=正前方，正值=左，负值=右
+    fixed_z_m: 0.11                 # 方块 Z 坐标（米），桌面上方高度，需 > min_grasp_z_m
+
+    # ── sweep 模式：方块做椭圆运动（测试动态跟踪） ────────────────────────────
+    sweep_center_x_m: 0.35         # 椭圆中心 X
+    sweep_center_y_m: 0.00         # 椭圆中心 Y
+    sweep_center_z_m: 0.11          # 椭圆中心 Z
+    sweep_radius_x_m: 0.05          # X 方向半径（米）
+    sweep_radius_y_m: 0.03          # Y 方向半径（米）
+    sweep_omega_rad_s: 0.30         # 角速度（弧度/秒），越大运动越快
