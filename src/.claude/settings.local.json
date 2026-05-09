@@ -43,7 +43,13 @@
       "Bash(ros2 topic *)",
       "Bash(ros2 run *)",
       "Bash(kill %1)",
-      "Bash(wait)"
+      "Bash(wait)",
+      "Bash(gnome-terminal --tab --title=Term2_FakeTarget -- bash -c ' *)",
+      "Bash(gnome-terminal --tab --title=Term3_Orchestrator -- bash -c ' *)",
+      "Bash(gnome-terminal --tab --title=Term4_TriggerCmd -- bash -c ' *)",
+      "Bash(ls -lat /home/zhengshaolong/.ros/log/ 2>/dev/null | head -30)",
+      "Read(//home/zhengshaolong/.ros/log/**)",
+      "Bash(ls -lt /home/zhengshaolong/.ros/log/ 2>/dev/null | head -20 | grep -E 'vision_grasp|grasp_exec|orchestrator')"
     ]
   }
 }

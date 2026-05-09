@@ -20,33 +20,37 @@ vision_grasp_orchestrator:
     stable_window_size: 5
     stable_position_tolerance_m: 0.01
 
+    grasp_target_offset_x_m: 0.0
+    grasp_target_offset_y_m: 0.0
+    grasp_target_offset_z_m: 0.003   # 当前实际值-5mm基础上上调8mm；夹爪仍完全闭合
     grasp_offset_x_m: 0.0
     grasp_offset_y_m: 0.0
-    grasp_offset_z_m: 0.0
-    approach_height_m: 0.10
-    lift_height_m: 0.12
-    min_grasp_z_m: 0.03
-    min_approach_z_m: 0.10
-    min_lift_z_m: 0.12
+    grasp_offset_z_m: 0.162       # tool0到夹持中心实测估计值；先保持不变，用诊断日志校准
+    approach_height_m: 0.04
+    lift_height_m: 0.10
+    min_grasp_z_m: 0.05           # tool0最低高度保护；真实安全主要由min_grasp_center_z_m控制
+    min_approach_z_m: 0.09
+    min_lift_z_m: 0.15
+    min_grasp_center_z_m: 0.05    # 夹持中心/指尖附近最低高度50mm，避免tool0低限误当指尖低限
 
-    allowed_planning_time: 3.0
-    num_planning_attempts: 5
+    allowed_planning_time: 10.0
+    num_planning_attempts: 20
     max_velocity_scaling: 0.20
     max_acceleration_scaling: 0.20
-    ik_timeout_sec: 0.30
+    ik_timeout_sec: 1.00
     goal_joint_tolerance: 0.01
 
     orientation_constraint_enabled: true
-    orientation_tol_x_rad: 0.20
-    orientation_tol_y_rad: 0.20
-    orientation_tol_z_rad: 0.35
+    orientation_tol_x_rad: 0.08
+    orientation_tol_y_rad: 0.08
+    orientation_tol_z_rad: 0.12
 
-    cartesian_max_step_m: 0.005
+    cartesian_max_step_m: 0.003
     cartesian_jump_threshold: 0.0
     cartesian_fraction_threshold: 0.95
 
     gripper_open_rad: 1.0
-    gripper_closed_rad: 0.0
+    gripper_closed_rad: 0.0          # 完全闭合；首次测试需观察是否扫桌/急停
     gripper_motion_sec: 1.0
     wait_after_gripper_sec: 0.3
 
@@ -55,11 +59,21 @@ vision_grasp_orchestrator:
     tf_timeout_sec: 1.0
 
     scene_apply_on_startup: true
-    table_enabled: false
+    table_enabled: false           # 当前实物桌面碰撞体与link_2重叠，先关闭以避免起始状态被判碰撞
     table_id: table
     table_size_x_m: 0.8
     table_size_y_m: 1.2
     table_size_z_m: 0.04
     table_pose_x_m: 0.45
     table_pose_y_m: 0.0
-    table_pose_z_m: -0.02
+    table_pose_z_m: 0.365         # 顶面=0.365+0.04/2=0.385m，对应桌面395mm-base_link离地10mm
+
+    target_object_enabled: true
+    target_object_collision_enabled: false
+    target_object_id: target_cube
+    target_object_size_x_m: 0.03
+    target_object_size_y_m: 0.03
+    target_object_size_z_m: 0.03
+    target_object_pose_offset_x_m: 0.0
+    target_object_pose_offset_y_m: 0.0
+    target_object_pose_offset_z_m: 0.010

@@ -77,8 +77,8 @@ vision_grasp_orchestrator:
     table_size_x_m: 0.50            # 桌面 X 方向长度（米，朝机械臂前方）
     table_size_y_m: 0.40            # 桌面 Y 方向宽度（米，左右方向）
     table_size_z_m: 0.10            # 桌面厚度（米）
-    table_pose_x_m: 0.35           # 桌面中心 X 坐标（米，相对 base_link）
-    table_pose_y_m: 0.00          # 桌面中心 Y 坐标（米，负值=偏左）
+    table_pose_x_m: 0.0           # 桌面中心 X 坐标（米，相对 base_link）
+    table_pose_y_m: -0.5          # 桌面中心 Y 坐标（米，负值=偏左）
     # 桌面顶面 Z = table_pose_z_m + table_size_z_m/2
     # 例：pose_z=0.04, size_z=0.10 → 顶面在 Z=0.09m
     table_pose_z_m: 0.04            # 桌面中心 Z 坐标（米，调整此值让桌面顶面与实际桌面对齐）
@@ -104,13 +104,13 @@ fake_target_position:
     motion_mode: fixed
 
     # ── fixed 模式：方块固定在此坐标 ──────────────────────────────────────────
-    fixed_x_m: 0.35                # 方块 X 坐标（米），需在机械臂可达范围内（LM3 约 0.2~0.5m）
-    fixed_y_m: 0.00               # 方块 Y 坐标（米），0=正前方，正值=左，负值=右
+    fixed_x_m: 0.0                 # 方块 X 坐标（米），需在机械臂可达范围内（LM3 约 0.2~0.5m）
+    fixed_y_m: -0.5               # 方块 Y 坐标（米），0=正前方，正值=左，负值=右
     fixed_z_m: 0.11                 # 方块 Z 坐标（米），桌面上方高度，需 > min_grasp_z_m
 
     # ── sweep 模式：方块做椭圆运动（测试动态跟踪） ────────────────────────────
-    sweep_center_x_m: 0.35         # 椭圆中心 X
-    sweep_center_y_m: 0.00         # 椭圆中心 Y
+    sweep_center_x_m: 0.0          # 椭圆中心 X
+    sweep_center_y_m: -0.5         # 椭圆中心 Y
     sweep_center_z_m: 0.11          # 椭圆中心 Z
     sweep_radius_x_m: 0.05          # X 方向半径（米）
     sweep_radius_y_m: 0.03          # Y 方向半径（米）

@@ -12,14 +12,12 @@ from control_msgs.action import FollowJointTrajectory
 from geometry_msgs.msg import PointStamped, Pose, Quaternion
 from moveit_msgs.action import ExecuteTrajectory, MoveGroup
 from moveit_msgs.msg import (
-    BoundingVolume,
     CollisionObject,
     Constraints,
     JointConstraint,
     MoveItErrorCodes,
     OrientationConstraint,
     PlanningScene,
-    PositionConstraint,
     RobotState,
 )
 from moveit_msgs.srv import ApplyPlanningScene, GetCartesianPath, GetPositionIK
@@ -171,6 +169,9 @@ class VisionGraspOrchestrator(Node):
         self.declare_parameter('stable_position_tolerance_m', 0.01)
         self.declare_parameter('simulation_mode', False)
 
+        self.declare_parameter('grasp_target_offset_x_m', 0.0)
+        self.declare_parameter('grasp_target_offset_y_m', 0.0)
+        self.declare_parameter('grasp_target_offset_z_m', 0.0)
         self.declare_parameter('grasp_offset_x_m', 0.0)
         self.declare_parameter('grasp_offset_y_m', 0.0)
         self.declare_parameter('grasp_offset_z_m', 0.0)
@@ -179,6 +180,7 @@ class VisionGraspOrchestrator(Node):
         self.declare_parameter('min_grasp_z_m', 0.03)
         self.declare_parameter('min_approach_z_m', 0.10)
         self.declare_parameter('min_lift_z_m', 0.12)
+        self.declare_parameter('min_grasp_center_z_m', 0.0)
 
         self.declare_parameter('allowed_planning_time', 3.0)
         self.declare_parameter('num_planning_attempts', 5)
@@ -249,6 +251,9 @@ class VisionGraspOrchestrator(Node):
         self.stable_position_tolerance_m = float(gp('stable_position_tolerance_m').value)
         self.simulation_mode = bool(gp('simulation_mode').value)
 
+        self.grasp_target_offset_x_m = float(gp('grasp_target_offset_x_m').value)
+        self.grasp_target_offset_y_m = float(gp('grasp_target_offset_y_m').value)
+        self.grasp_target_offset_z_m = float(gp('grasp_target_offset_z_m').value)
         self.grasp_offset_x_m = float(gp('grasp_offset_x_m').value)
         self.grasp_offset_y_m = float(gp('grasp_offset_y_m').value)
         self.grasp_offset_z_m = float(gp('grasp_offset_z_m').value)
@@ -257,6 +262,7 @@ class VisionGraspOrchestrator(Node):
         self.min_grasp_z_m = float(gp('min_grasp_z_m').value)
         self.min_approach_z_m = float(gp('min_approach_z_m').value)
         self.min_lift_z_m = float(gp('min_lift_z_m').value)
+        self.min_grasp_center_z_m = float(gp('min_grasp_center_z_m').value)
 
         self.allowed_planning_time = float(gp('allowed_planning_time').value)
         self.num_planning_attempts = int(gp('num_planning_attempts').value)
@@ -379,56 +385,99 @@ class VisionGraspOrchestrator(Node):
         target = self._get_stable_target()
         if target is None:
             raise RuntimeError('当前没有稳定的 /target_position 目标，请先让 cube 稳定识别。')
-
-        # Use pointing-down orientation (tool Z = (0,0,-1))
-        grasp_quat = self._quat_pointing_down()
-        tz_x, tz_y, tz_z = self._tool_z_axis(grasp_quat)
-
-        # tool0 position such that fingers reach the target
-        grasp_pose = self._make_pose(
-            x=target[0] + self.grasp_offset_x_m - self.grasp_offset_z_m * tz_x,
-            y=target[1] + self.grasp_offset_y_m - self.grasp_offset_z_m * tz_y,
-            z=max(target[2] - self.grasp_offset_z_m * tz_z, self.min_grasp_z_m),
-            orientation=grasp_quat,
-        )
-        # approach directly above grasp point
-        approach_pose = self._make_pose(
-            x=grasp_pose.position.x,
-            y=grasp_pose.position.y,
-            z=max(grasp_pose.position.z + self.approach_height_m, self.min_approach_z_m),
-            orientation=grasp_quat,
-        )
-        lift_pose = self._make_pose(
-            x=grasp_pose.position.x,
-            y=grasp_pose.position.y,
-            z=max(grasp_pose.position.z + self.lift_height_m, self.min_lift_z_m),
-            orientation=grasp_quat,
-        )
-
-        self._publish_point_marker(1, self._pose_to_tuple(grasp_pose), 0.028, 0.90, 0.25, 0.25, 'grasp')
-        self._publish_point_marker(2, self._pose_to_tuple(approach_pose), 0.028, 0.20, 0.55, 0.95, 'approach')
-        self._publish_point_marker(3, self._pose_to_tuple(lift_pose), 0.028, 0.95, 0.75, 0.20, 'lift')
-
-        self.get_logger().info(
-            '开始抓取: '
-            f'target=({target[0]:+.3f}, {target[1]:+.3f}, {target[2]:+.3f}) m '
-            f'grasp=({grasp_pose.position.x:+.3f}, {grasp_pose.position.y:+.3f}, {grasp_pose.position.z:+.3f}) m'
+        grasp_target = (
+            target[0] + self.grasp_target_offset_x_m,
+            target[1] + self.grasp_target_offset_y_m,
+            target[2] + self.grasp_target_offset_z_m,
         )
 
         self._send_gripper(self.gripper_open_rad)
-        self._plan_and_execute_approach(approach_pose, grasp_quat)
+
+        last_approach_error: Optional[Exception] = None
+        selected_label = ''
+        grasp_quat: Optional[Quaternion] = None
+        grasp_pose: Optional[Pose] = None
+        approach_pose: Optional[Pose] = None
+        lift_pose: Optional[Pose] = None
+        for label, candidate_quat in self._quat_pointing_down_variants():
+            tz_x, tz_y, tz_z = self._tool_z_axis(candidate_quat)
+            grasp_x = grasp_target[0] + self.grasp_offset_x_m - self.grasp_offset_z_m * tz_x
+            grasp_y = grasp_target[1] + self.grasp_offset_y_m - self.grasp_offset_z_m * tz_y
+            grasp_z = max(grasp_target[2] - self.grasp_offset_z_m * tz_z, self.min_grasp_z_m)
+            predicted_center_z = grasp_z + self.grasp_offset_z_m * tz_z
+            if predicted_center_z < self.min_grasp_center_z_m:
+                grasp_z += self.min_grasp_center_z_m - predicted_center_z
+                predicted_center_z = self.min_grasp_center_z_m
+
+            candidate_grasp = self._make_pose(
+                x=grasp_x,
+                y=grasp_y,
+                z=grasp_z,
+                orientation=candidate_quat,
+            )
+            candidate_approach = self._make_pose(
+                x=candidate_grasp.position.x,
+                y=candidate_grasp.position.y,
+                z=max(candidate_grasp.position.z + self.approach_height_m, self.min_approach_z_m),
+                orientation=candidate_quat,
+            )
+            candidate_lift = self._make_pose(
+                x=candidate_grasp.position.x,
+                y=candidate_grasp.position.y,
+                z=max(candidate_grasp.position.z + self.lift_height_m, self.min_lift_z_m),
+                orientation=candidate_quat,
+            )
+
+            self._publish_point_marker(1, self._pose_to_tuple(candidate_grasp), 0.028, 0.90, 0.25, 0.25, 'grasp')
+            self._publish_point_marker(2, self._pose_to_tuple(candidate_approach), 0.028, 0.20, 0.55, 0.95, 'approach')
+            self._publish_point_marker(3, self._pose_to_tuple(candidate_lift), 0.028, 0.95, 0.75, 0.20, 'lift')
+
+            self.get_logger().info(
+                '开始抓取姿态尝试: '
+                f'orientation={label} '
+                f'target=({target[0]:+.3f}, {target[1]:+.3f}, {target[2]:+.3f}) m '
+                f'grasp_target=({grasp_target[0]:+.3f}, {grasp_target[1]:+.3f}, {grasp_target[2]:+.3f}) m '
+                f'grasp=({candidate_grasp.position.x:+.3f}, {candidate_grasp.position.y:+.3f}, {candidate_grasp.position.z:+.3f}) m '
+                f'predicted_center_z={predicted_center_z:+.3f} m '
+                f'approach=({candidate_approach.position.x:+.3f}, {candidate_approach.position.y:+.3f}, {candidate_approach.position.z:+.3f}) m '
+                f'lift=({candidate_lift.position.x:+.3f}, {candidate_lift.position.y:+.3f}, {candidate_lift.position.z:+.3f}) m'
+            )
+
+            try:
+                self._plan_and_execute_approach(candidate_approach, candidate_quat)
+            except Exception as exc:
+                last_approach_error = exc
+                self.get_logger().warn(f'approach 姿态 {label} 失败，尝试下一个竖直向下姿态: {exc}')
+                continue
+
+            selected_label = label
+            grasp_quat = candidate_quat
+            grasp_pose = candidate_grasp
+            approach_pose = candidate_approach
+            lift_pose = candidate_lift
+            break
+
+        if grasp_quat is None or grasp_pose is None or approach_pose is None or lift_pose is None:
+            raise RuntimeError(f'approach 所有竖直向下姿态均失败: {last_approach_error}')
+
+        self.get_logger().info(f'approach 成功，使用姿态 {selected_label}。')
+        self._log_current_tool_pose('after_approach')
         self._execute_cartesian_segment(approach_pose, grasp_pose, grasp_quat, 'descend')
+        self._log_current_tool_pose('after_descend')
         self._send_gripper(self.gripper_closed_rad)
+        self._log_current_tool_pose('after_gripper_close')
         self._attach_cube_to_gripper()
 
         actual_pose = self._lookup_current_pose()
+        lift_quat = self._copy_quaternion(actual_pose.orientation)
         actual_lift = self._make_pose(
             x=actual_pose.position.x,
             y=actual_pose.position.y,
             z=max(actual_pose.position.z + self.lift_height_m, self.min_lift_z_m),
-            orientation=grasp_quat,
+            orientation=lift_quat,
         )
-        self._execute_cartesian_segment(None, actual_lift, grasp_quat, 'lift')
+        self._execute_cartesian_segment(None, actual_lift, lift_quat, 'lift')
+        self._log_current_tool_pose('after_lift')
 
         return (
             '抓取流程执行完成。'
@@ -512,6 +561,24 @@ class VisionGraspOrchestrator(Node):
         pose.orientation = transform.transform.rotation
         return pose
 
+    def _log_current_tool_pose(self, label: str) -> None:
+        try:
+            pose = self._lookup_current_pose()
+        except Exception as exc:
+            self.get_logger().warn(f'{label}: 无法读取当前 {self.tool_link} 位姿: {exc}')
+            return
+
+        q = pose.orientation
+        tz_x, tz_y, tz_z = self._tool_z_axis(q)
+        center_z = pose.position.z + self.grasp_offset_z_m * tz_z
+        self.get_logger().info(
+            f'{label}: '
+            f'{self.tool_link}=({pose.position.x:+.3f}, {pose.position.y:+.3f}, {pose.position.z:+.3f}) m '
+            f'q=({q.x:+.3f}, {q.y:+.3f}, {q.z:+.3f}, {q.w:+.3f}) '
+            f'tool_z=({tz_x:+.3f}, {tz_y:+.3f}, {tz_z:+.3f}) '
+            f'predicted_center_z={center_z:+.3f} m'
+        )
+
     def _make_pose(self, x: float, y: float, z: float, orientation: Quaternion) -> Pose:
         pose = Pose()
         pose.position.x = float(x)
@@ -585,38 +652,8 @@ class VisionGraspOrchestrator(Node):
         return constraints
 
     def _plan_and_execute_approach(self, approach_pose: Pose, orientation: Quaternion) -> None:
-        # Use pose goal constraints — MoveIt handles IK internally with multiple seeds,
-        # which is more robust than a single explicit IK call from the home seed.
-        pos_c = PositionConstraint()
-        pos_c.header.frame_id = self.base_frame
-        pos_c.link_name = self.tool_link
-        sphere = SolidPrimitive()
-        sphere.type = SolidPrimitive.SPHERE
-        sphere.dimensions = [0.005]
-        bv = BoundingVolume()
-        bv.primitives = [sphere]
-        center = Pose()
-        center.position.x = approach_pose.position.x
-        center.position.y = approach_pose.position.y
-        center.position.z = approach_pose.position.z
-        center.orientation.w = 1.0
-        bv.primitive_poses = [center]
-        pos_c.constraint_region = bv
-        pos_c.weight = 1.0
-
-        ori_c = OrientationConstraint()
-        ori_c.header.frame_id = self.base_frame
-        ori_c.link_name = self.tool_link
-        ori_c.orientation = self._copy_quaternion(orientation)
-        ori_c.absolute_x_axis_tolerance = 0.05
-        ori_c.absolute_y_axis_tolerance = 0.05
-        ori_c.absolute_z_axis_tolerance = 0.05
-        ori_c.parameterization = OrientationConstraint.ROTATION_VECTOR
-        ori_c.weight = 1.0
-
-        goal_constraints = Constraints()
-        goal_constraints.position_constraints = [pos_c]
-        goal_constraints.orientation_constraints = [ori_c]
+        target_state = self._compute_ik(approach_pose, orientation)
+        goal_constraints = self._build_joint_goal_constraints(target_state)
 
         goal = MoveGroup.Goal()
         goal.request.group_name = self.group_name
@@ -938,13 +975,33 @@ class VisionGraspOrchestrator(Node):
 
     @staticmethod
     def _quat_pointing_down() -> Quaternion:
-        """返回 tool0 Z 轴指向 base_link -Z（垂直向下）的四元数（绕 Y 轴旋转 180°）."""
+        """返回 rx=180°, ry=0°, rz=0°：tool0 +Z 向下，tool0 +X 对齐 base_link +X。"""
         q = Quaternion()
-        q.x = 0.0
-        q.y = 1.0
+        q.x = 1.0
+        q.y = 0.0
         q.z = 0.0
         q.w = 0.0
         return q
+
+    @staticmethod
+    def _quat_pointing_down_variants() -> Tuple[Tuple[str, Quaternion], ...]:
+        """返回若干 tool0 +Z 向下的姿态；优先保持两指连线沿 base_link X。"""
+        s = math.sqrt(0.5)
+        values = (
+            ('base_x/rz_0', (1.0, 0.0, 0.0, 0.0)),
+            ('base_x/rz_180', (0.0, 1.0, 0.0, 0.0)),
+            ('base_y/rz_90', (s, s, 0.0, 0.0)),
+            ('base_y/rz_-90', (s, -s, 0.0, 0.0)),
+        )
+        variants = []
+        for label, (x, y, z, w) in values:
+            q = Quaternion()
+            q.x = x
+            q.y = y
+            q.z = z
+            q.w = w
+            variants.append((label, q))
+        return tuple(variants)
 
     def _acquire_busy(self) -> bool:
         with self._busy_lock:
